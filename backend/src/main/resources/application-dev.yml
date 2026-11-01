@@ -1,0 +1,14 @@
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+websocket:
+  allowed-origins: "http://localhost:5173,http://localhost:3000"
+
+logging:
+  level:
+    com.codesync: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.springframework.messaging: DEBUG

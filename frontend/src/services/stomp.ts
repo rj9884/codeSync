@@ -1,0 +1,199 @@
+import { Client, Message, StompSubscription } from '@stomp/stompjs'
+import SockJS from 'sockjs-client'
+import type { CodeUpdate, TypingEvent, UserJoinedEvent, UserLeftEvent, Room, RoomUser } from '../types'
+
+type MessageHandler<T> = (data: T) => void
+
+interface StompCallbacks {
+  onCodeUpdate?: MessageHandler<CodeUpdate>
+  onTyping?: MessageHandler<TypingEvent>
+  onUserJoined?: MessageHandler<UserJoinedEvent>
+  onUserLeft?: MessageHandler<UserLeftEvent>
+  onRoomState?: MessageHandler<Room>
+  onConnect?: () => void
+  onDisconnect?: () => void
+  onError?: (error: string) => void
+}
+
+class StompService {
+  private client: Client | null = null
+  private subscriptions: Map<string, StompSubscription> = new Map()
+  private callbacks: StompCallbacks = {}
+  private roomId: string | null = null
+  private userName: string | null = null
+  private reconnectAttempts = 0
+  private maxReconnectAttempts = 5
+  private reconnectDelay = 1000
+
+  connect(roomId: string, userName: string, callbacks: StompCallbacks): Promise<void> {
+    this.roomId = roomId
+    this.userName = userName
+    this.callbacks = callbacks
+
+    return new Promise((resolve, reject) => {
+      const socket = new SockJS('/ws')
+      this.client = new Client({
+        webSocketFactory: () => socket,
+        reconnectDelay: this.reconnectDelay,
+        onConnect: () => {
+          console.log('STOMP connected')
+          this.reconnectAttempts = 0
+          this.subscribeToRoom(roomId)
+          this.joinRoom(roomId, userName)
+          this.callbacks.onConnect?.()
+          resolve()
+        },
+        onDisconnect: () => {
+          console.log('STOMP disconnected')
+          this.callbacks.onDisconnect?.()
+        },
+        onStompError: (frame) => {
+          const error = frame.headers['message'] || 'STOMP error'
+          console.error('STOMP error:', error)
+          this.callbacks.onError?.(error)
+        },
+        onWebSocketError: (error) => {
+          console.error('WebSocket error:', error)
+          this.callbacks.onError?.(error.message)
+        },
+      })
+
+      this.client.activate()
+
+      // Timeout for connection
+      setTimeout(() => {
+        if (!this.client?.connected) {
+          reject(new Error('Connection timeout'))
+        }
+      }, 10000)
+    })
+  }
+
+  private subscribeToRoom(roomId: string) {
+    if (!this.client) return
+
+    // Subscribe to code updates
+    this.subscriptions.set('code', this.client.subscribe(
+      `/topic/room/${roomId}/code-update`,
+      (message: Message) => {
+        try {
+          const data = JSON.parse(message.body) as CodeUpdate
+          this.callbacks.onCodeUpdate?.(data)
+        } catch (e) {
+          console.error('Failed to parse code update:', e)
+        }
+      }
+    ))
+
+    // Subscribe to typing events
+    this.subscriptions.set('typing', this.client.subscribe(
+      `/topic/room/${roomId}/typing`,
+      (message: Message) => {
+        try {
+          const data = JSON.parse(message.body) as TypingEvent
+          this.callbacks.onTyping?.(data)
+        } catch (e) {
+          console.error('Failed to parse typing event:', e)
+        }
+      }
+    ))
+
+    // Subscribe to user joined
+    this.subscriptions.set('userJoined', this.client.subscribe(
+      `/topic/room/${roomId}/user-joined`,
+      (message: Message) => {
+        try {
+          const data = JSON.parse(message.body) as UserJoinedEvent
+          this.callbacks.onUserJoined?.(data)
+        } catch (e) {
+          console.error('Failed to parse user joined:', e)
+        }
+      }
+    ))
+
+    // Subscribe to user left
+    this.subscriptions.set('userLeft', this.client.subscribe(
+      `/topic/room/${roomId}/user-left`,
+      (message: Message) => {
+        try {
+          const data = JSON.parse(message.body) as UserLeftEvent
+          this.callbacks.onUserLeft?.(data)
+        } catch (e) {
+          console.error('Failed to parse user left:', e)
+        }
+      }
+    ))
+
+    // Subscribe to room state (initial)
+    this.subscriptions.set('roomState', this.client.subscribe(
+      `/topic/room/${roomId}/state`,
+      (message: Message) => {
+        try {
+          const data = JSON.parse(message.body) as Room
+          this.callbacks.onRoomState?.(data)
+        } catch (e) {
+          console.error('Failed to parse room state:', e)
+        }
+      }
+    ))
+  }
+
+  private joinRoom(roomId: string, userName: string) {
+    this.send('/app/room/{roomId}/join', { roomId, name: userName })
+  }
+
+  leaveRoom(roomId: string) {
+    this.send('/app/room/{roomId}/leave', { roomId })
+  }
+
+  sendCodeUpdate(roomId: string, code: string, version: number) {
+    this.send('/app/room/{roomId}/code', { roomId, code, version })
+  }
+
+  sendTyping(roomId: string, name: string, typing: boolean) {
+    this.send('/app/room/{roomId}/typing', { roomId, name, typing })
+  }
+
+  requestRoomState(roomId: string) {
+    if (this.client?.connected) {
+      this.client.subscribe(`/topic/room/${roomId}/state`, (message: Message) => {
+        try {
+          const data = JSON.parse(message.body) as Room
+          this.callbacks.onRoomState?.(data)
+        } catch (e) {
+          console.error('Failed to parse room state:', e)
+        }
+      })
+    }
+  }
+
+  private send(destination: string, body: object) {
+    if (this.client?.connected) {
+      const dest = destination.replace('{roomId}', this.roomId || '')
+      this.client.publish({
+        destination: dest,
+        body: JSON.stringify(body),
+      })
+    }
+  }
+
+  disconnect() {
+    if (this.client) {
+      if (this.roomId) {
+        this.leaveRoom(this.roomId)
+      }
+      this.subscriptions.forEach((sub) => sub.unsubscribe())
+      this.subscriptions.clear()
+      this.client.deactivate()
+      this.client = null
+      this.roomId = null
+      this.userName = null
+    }
+  }
+
+  isConnected(): boolean {
+    return this.client?.connected ?? false
+  }
+}
+
+export const stompService = new StompService()
