@@ -76,13 +76,13 @@ export function HeroSection() {
                 height="4095"
               />
             </AnimatedGroup>
-            <div className="absolute inset-0 -z-10 size-full [background:radial-gradient(125%_125%_at_50%_100%,transparent_0%,var(--color-background,#000)_75%)]"></div>
+            <div className="absolute inset-0 -z-10 size-full [background:radial-gradient(125%_125%_at_50%_100%,transparent_0%,rgba(11,12,16,0.6)_75%)]"></div>
             <div className="mx-auto max-w-7xl px-6">
               <div className="text-center sm:mx-auto lg:mr-auto lg:mt-0">
                 <AnimatedGroup variants={transitionVariants}>
                   <Link
                     to="/collaborate"
-                    className="hover:bg-zinc-900 bg-zinc-900/80 group mx-auto flex w-fit items-center gap-4 rounded-full border border-zinc-800 p-1 pl-4 shadow-md transition-colors duration-300"
+                    className="hover:bg-zinc-900 bg-zinc-900/90 group mx-auto flex w-fit items-center gap-4 rounded-full border border-zinc-700/80 p-1 pl-4 shadow-lg transition-colors duration-300"
                   >
                     <span className="text-zinc-200 text-sm"> 🚀 Coming Soon: Animated Tooltip in The Editor</span>
                     <span className="block h-4 w-0.5 border-l border-zinc-700"></span>
@@ -96,7 +96,7 @@ export function HeroSection() {
                   preset="fade-in-blur"
                   speedSegment={0.3}
                   as="h1"
-                  className="text-gray-300 relative z-20 py-8 text-4xl font-bold sm:text-7xl"
+                  className="text-gray-200 relative z-20 py-8 text-4xl font-bold sm:text-7xl"
                 >
                   Code Together, Anywhere.
                 </TextEffect>

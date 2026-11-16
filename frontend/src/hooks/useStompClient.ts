@@ -10,6 +10,7 @@ interface UseStompClientOptions {
   onUserJoined?: (user: UserJoinedEvent) => void
   onUserLeft?: (event: UserLeftEvent) => void
   onRoomState?: (room: Room) => void
+  onLanguageChange?: (language: string) => void
   onConnect?: () => void
   onDisconnect?: () => void
   onError?: (error: string) => void
@@ -23,6 +24,7 @@ export function useStompClient({
   onUserJoined,
   onUserLeft,
   onRoomState,
+  onLanguageChange,
   onConnect,
   onDisconnect,
   onError,
@@ -34,6 +36,7 @@ export function useStompClient({
     onUserJoined,
     onUserLeft,
     onRoomState,
+    onLanguageChange,
     onConnect,
     onDisconnect,
     onError,
@@ -47,11 +50,12 @@ export function useStompClient({
       onUserJoined,
       onUserLeft,
       onRoomState,
+      onLanguageChange,
       onConnect,
       onDisconnect,
       onError,
     }
-  }, [onCodeUpdate, onTyping, onUserJoined, onUserLeft, onRoomState, onConnect, onDisconnect, onError])
+  })
 
   useEffect(() => {
     if (!roomId || !userName) return
@@ -75,6 +79,9 @@ export function useStompClient({
           },
           onRoomState: (data) => {
             if (mounted) callbacksRef.current.onRoomState?.(data)
+          },
+          onLanguageChange: (data) => {
+            if (mounted) callbacksRef.current.onLanguageChange?.(data)
           },
           onConnect: () => {
             if (mounted) {
@@ -117,6 +124,10 @@ export function useStompClient({
     stompService.sendTyping(roomId, userName, typing)
   }, [roomId, userName])
 
+  const sendLanguage = useCallback((language: string) => {
+    stompService.sendLanguage(roomId, language)
+  }, [roomId])
+
   const requestRoomState = useCallback(() => {
     stompService.requestRoomState(roomId)
   }, [roomId])
@@ -125,6 +136,7 @@ export function useStompClient({
     connected,
     sendCodeUpdate,
     sendTyping,
+    sendLanguage,
     requestRoomState,
   }
 }

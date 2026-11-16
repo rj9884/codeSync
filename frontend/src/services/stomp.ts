@@ -10,6 +10,7 @@ interface StompCallbacks {
   onUserJoined?: MessageHandler<UserJoinedEvent>
   onUserLeft?: MessageHandler<UserLeftEvent>
   onRoomState?: MessageHandler<Room>
+  onLanguageChange?: MessageHandler<string>
   onConnect?: () => void
   onDisconnect?: () => void
   onError?: (error: string) => void
@@ -26,6 +27,14 @@ class StompService {
   private reconnectDelay = 1000
 
   connect(roomId: string, userName: string, callbacks: StompCallbacks): Promise<void> {
+    if (this.client) {
+      try {
+        this.disconnect()
+      } catch (e) {
+        // ignore
+      }
+    }
+
     this.roomId = roomId
     this.userName = userName
     this.callbacks = callbacks
@@ -124,15 +133,17 @@ class StompService {
       }
     ))
 
-    // Subscribe to room state (initial)
-    this.subscriptions.set('roomState', this.client.subscribe(
-      `/topic/room/${roomId}/state`,
+    // Subscribe to language change
+    this.subscriptions.set('language', this.client.subscribe(
+      `/topic/room/${roomId}/language`,
       (message: Message) => {
         try {
-          const data = JSON.parse(message.body) as Room
-          this.callbacks.onRoomState?.(data)
+          const data = JSON.parse(message.body) as { language?: string }
+          if (data?.language) {
+            this.callbacks.onLanguageChange?.(data.language)
+          }
         } catch (e) {
-          console.error('Failed to parse room state:', e)
+          console.error('Failed to parse language change:', e)
         }
       }
     ))
@@ -152,6 +163,10 @@ class StompService {
 
   sendTyping(roomId: string, name: string, typing: boolean) {
     this.send('/app/room/{roomId}/typing', { roomId, name, typing })
+  }
+
+  sendLanguage(roomId: string, language: string) {
+    this.send('/app/room/{roomId}/language', { roomId, language })
   }
 
   requestRoomState(roomId: string) {
@@ -180,11 +195,25 @@ class StompService {
   disconnect() {
     if (this.client) {
       if (this.roomId) {
-        this.leaveRoom(this.roomId)
+        try {
+          this.leaveRoom(this.roomId)
+        } catch (e) {
+          // ignore
+        }
       }
-      this.subscriptions.forEach((sub) => sub.unsubscribe())
+      this.subscriptions.forEach((sub) => {
+        try {
+          sub.unsubscribe()
+        } catch (e) {
+          // ignore
+        }
+      })
       this.subscriptions.clear()
-      this.client.deactivate()
+      try {
+        this.client.deactivate()
+      } catch (e) {
+        // ignore
+      }
       this.client = null
       this.roomId = null
       this.userName = null

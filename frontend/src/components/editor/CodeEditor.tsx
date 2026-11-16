@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { EditorView, basicSetup } from '@codemirror/basic-setup'
 import { javascript } from '@codemirror/lang-javascript'
 import { python } from '@codemirror/lang-python'
@@ -6,9 +6,7 @@ import { java } from '@codemirror/lang-java'
 import { cpp } from '@codemirror/lang-cpp'
 import { html } from '@codemirror/lang-html'
 import { css } from '@codemirror/lang-css'
-import { collab, CollabConfig } from '@codemirror/collab'
-import { Compartment, Extension } from '@codemirror/state'
-import { EditorState } from '@codemirror/state'
+import { Compartment, Extension, EditorState } from '@codemirror/state'
 
 interface CodeEditorProps {
   roomId: string
@@ -22,13 +20,52 @@ interface CodeEditorProps {
 
 const LANGUAGE_EXTENSIONS: Record<string, Extension> = {
   javascript: javascript({ jsx: true }),
+  jsx: javascript({ jsx: true }),
   typescript: javascript({ typescript: true, jsx: true }),
+  tsx: javascript({ typescript: true, jsx: true }),
   python: python(),
   java: java(),
   cpp: cpp(),
+  c: cpp(),
   html: html(),
   css: css(),
 }
+
+const darkTheme = EditorView.theme({
+  '&': {
+    height: '100%',
+    fontSize: '15px',
+    backgroundColor: '#18181b',
+    color: '#f4f4f5',
+  },
+  '.cm-scroller': {
+    overflow: 'auto',
+    fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+    lineHeight: '1.6',
+  },
+  '.cm-content': {
+    padding: '12px 0',
+    caretColor: '#ffffff',
+  },
+  '.cm-cursor': {
+    borderLeftColor: '#ffffff',
+  },
+  '.cm-selectionBackground, ::selection': {
+    backgroundColor: '#3f3f46 !important',
+  },
+  '.cm-gutters': {
+    backgroundColor: '#121215',
+    borderRight: '1px solid #27272a',
+    color: '#71717a',
+  },
+  '.cm-activeLine': {
+    backgroundColor: '#27272a40',
+  },
+  '.cm-activeLineGutter': {
+    backgroundColor: '#27272a80',
+    color: '#e4e4e7',
+  },
+}, { dark: true })
 
 export function CodeEditor({
   roomId,
@@ -36,70 +73,49 @@ export function CodeEditor({
   initialCode,
   version: initialVersion,
   onCodeChange,
-  onRemoteUpdate,
   readOnly = false,
 }: CodeEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const versionRef = useRef(initialVersion)
+  const isInternalChangeRef = useRef(false)
+  const onCodeChangeRef = useRef(onCodeChange)
   const languageCompartment = useRef(new Compartment())
-  const collabCompartment = useRef(new Compartment())
-  const [clientId] = useState(() => Math.floor(Math.random() * 1000000))
-  const pendingChangesRef = useRef<{ code: string; version: number } | null>(null)
-  const isComposingRef = useRef(false)
+  const readOnlyCompartment = useRef(new Compartment())
 
-  // Create collab config
-  const collabConfig: CollabConfig = {
-    clientID: clientId,
-    sendUpdates: (updates) => {
-      const newState = viewRef.current!.state.apply(updates)
-      const code = newState.doc.toString()
-      pendingChangesRef.current = { code, version: versionRef.current }
-    },
-  }
+  useEffect(() => {
+    onCodeChangeRef.current = onCodeChange
+  }, [onCodeChange])
 
-  // Get language extension
+  useEffect(() => {
+    versionRef.current = initialVersion
+  }, [initialVersion])
+
   const getLanguageExtension = useCallback((lang: string): Extension => {
     return LANGUAGE_EXTENSIONS[lang] || javascript()
   }, [])
 
-  // Initialize editor
+  // Initialize CodeMirror instance once
   useEffect(() => {
-    if (!editorRef.current || viewRef.current) return
+    if (!editorRef.current) return
 
     const extensions = [
       basicSetup,
+      darkTheme,
       languageCompartment.current.of(getLanguageExtension(language)),
-      collabCompartment.current.of(collab(collabConfig)),
+      readOnlyCompartment.current.of(EditorState.readOnly.of(readOnly)),
       EditorView.updateListener.of((update) => {
-        if (update.docChanged && !isComposingRef.current) {
+        if (update.docChanged && !isInternalChangeRef.current) {
           const code = update.state.doc.toString()
           const newVersion = versionRef.current + 1
           versionRef.current = newVersion
-          onCodeChange(code, newVersion)
+          onCodeChangeRef.current?.(code, newVersion)
         }
-      }),
-      EditorView.domEventHandlers({
-        compositionstart: () => { isComposingRef.current = true },
-        compositionend: (e) => {
-          isComposingRef.current = false
-          const view = viewRef.current
-          if (view) {
-            const code = view.state.doc.toString()
-            const newVersion = versionRef.current + 1
-            versionRef.current = newVersion
-            onCodeChange(code, newVersion)
-          }
-        },
       }),
     ]
 
-    if (readOnly) {
-      extensions.push(EditorState.readOnly.of(true))
-    }
-
     const state = EditorState.create({
-      doc: initialCode,
+      doc: initialCode || '',
       extensions,
     })
 
@@ -114,59 +130,34 @@ export function CodeEditor({
       view.destroy()
       viewRef.current = null
     }
-  }, [roomId, initialCode, readOnly, getLanguageExtension, language, onCodeChange])
+  }, [roomId])
 
-  // Handle language changes
+  // Reconfigure language dynamically
   useEffect(() => {
     if (viewRef.current) {
       viewRef.current.dispatch({
-        effects: languageCompartment.current.reconfigure(getLanguageExtension(language))
+        effects: languageCompartment.current.reconfigure(getLanguageExtension(language)),
       })
     }
   }, [language, getLanguageExtension])
 
-  // Handle remote updates
+  // Sync external code changes when remote updates arrive
   useEffect(() => {
-    if (onRemoteUpdate && pendingChangesRef.current) {
-      const { code, version } = pendingChangesRef.current
-      onRemoteUpdate(code, version)
-      pendingChangesRef.current = null
+    if (!viewRef.current) return
+    const currentCode = viewRef.current.state.doc.toString()
+    if (initialCode !== undefined && initialCode !== currentCode) {
+      isInternalChangeRef.current = true
+      viewRef.current.dispatch({
+        changes: { from: 0, to: currentCode.length, insert: initialCode },
+      })
+      isInternalChangeRef.current = false
     }
-  }, [onRemoteUpdate])
-
-  // Expose method to receive remote changes
-  const receiveRemoteUpdate = useCallback((code: string, version: number) => {
-    if (viewRef.current && version > versionRef.current) {
-      const view = viewRef.current
-      const currentDoc = view.state.doc.toString()
-      if (currentDoc !== code) {
-        // Calculate the diff and apply as a transaction
-        const transaction = view.state.update({
-          changes: { from: 0, to: currentDoc.length, insert: code }
-        })
-        view.dispatch(transaction)
-        versionRef.current = version
-      }
-    }
-  }, [])
-
-  // Focus method
-  const focus = useCallback(() => {
-    viewRef.current?.focus()
-  }, [])
+  }, [initialCode])
 
   return (
     <div
       ref={editorRef}
-      className="cm-editor flex-1 border border-border rounded-lg bg-background"
-      data-client-id={clientId}
+      className="h-full w-full flex-1 overflow-hidden"
     />
   )
-}
-
-// Helper component for remote cursors (simplified)
-export function RemoteCursors({ users, currentUserId }: { users: Array<{ sessionId: string; name: string; avatarId: number }>; currentUserId?: string }) {
-  // This would integrate with CodeMirror's remote cursor support
-  // Simplified for now
-  return null
 }

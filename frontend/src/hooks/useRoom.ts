@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { roomApi } from '../services/api'
-import type { Room, RoomUser, Language } from '../types'
+import type { Room, RoomUser } from '../types'
 
 interface UseRoomOptions {
   roomId: string
@@ -12,6 +12,11 @@ export function useRoom({ roomId, initialRoom, onRoomUpdate }: UseRoomOptions) {
   const [room, setRoom] = useState<Room | null>(initialRoom || null)
   const [loading, setLoading] = useState(!initialRoom)
   const [error, setError] = useState<string | null>(null)
+
+  const onRoomUpdateRef = useRef(onRoomUpdate)
+  useEffect(() => {
+    onRoomUpdateRef.current = onRoomUpdate
+  }, [onRoomUpdate])
 
   const fetchRoom = useCallback(async () => {
     if (!roomId) return
@@ -31,10 +36,9 @@ export function useRoom({ roomId, initialRoom, onRoomUpdate }: UseRoomOptions) {
       }
       const finalRoom = { ...roomData, users: roomData.users || {} }
       setRoom(finalRoom)
-      onRoomUpdate?.(finalRoom)
+      onRoomUpdateRef.current?.(finalRoom)
       setError(null)
     } catch (err) {
-      // If fetching fails, we can still initialize local room state so the user isn't blocked
       console.error('Failed to fetch room:', err)
       const fallbackRoom: Room = {
         id: roomId,
@@ -52,7 +56,7 @@ export function useRoom({ roomId, initialRoom, onRoomUpdate }: UseRoomOptions) {
     } finally {
       setLoading(false)
     }
-  }, [roomId, onRoomUpdate])
+  }, [roomId])
 
   useEffect(() => {
     if (!initialRoom) {
@@ -60,36 +64,73 @@ export function useRoom({ roomId, initialRoom, onRoomUpdate }: UseRoomOptions) {
     }
   }, [fetchRoom, initialRoom])
 
-  const updateRoom = useCallback((updates: Partial<Room>) => {
-    setRoom(prev => {
+  // Sync language changes via effect rather than inside state setter
+  useEffect(() => {
+    if (room) {
+      onRoomUpdateRef.current?.(room)
+    }
+  }, [room?.language])
+
+  const updateRoom = useCallback((updates: Partial<Room> | ((prev: Room) => Room)) => {
+    setRoom((prev) => {
       if (!prev) return null
-      const updated = { ...prev, ...updates }
-      onRoomUpdate?.(updated)
-      return updated
+      return typeof updates === 'function' ? updates(prev) : { ...prev, ...updates }
     })
-  }, [onRoomUpdate])
+  }, [])
 
   const updateCode = useCallback((code: string, version: number) => {
-    updateRoom({ code, version, updatedAt: new Date().toISOString() })
-  }, [updateRoom])
+    setRoom((prev) => {
+      if (!prev) return null
+      if (prev.code === code && prev.version === version) return prev
+      return { ...prev, code, version, updatedAt: new Date().toISOString() }
+    })
+  }, [])
 
   const addUser = useCallback((user: RoomUser) => {
-    updateRoom(prev => {
+    if (!user || !user.sessionId) return
+    setRoom((prev) => {
       if (!prev) return null
+      const existing = prev.users || {}
+      if (existing[user.sessionId] && existing[user.sessionId].name === user.name) {
+        return prev
+      }
+      const updatedUsers = { ...existing, [user.sessionId]: user }
       return {
         ...prev,
-        users: { ...(prev.users || {}), [user.sessionId]: user },
+        users: updatedUsers,
+        userCount: Object.keys(updatedUsers).length,
       }
     })
-  }, [updateRoom])
+  }, [])
 
   const removeUser = useCallback((sessionId: string) => {
-    updateRoom(prev => {
-      if (!prev) return null
-      const { [sessionId]: _, ...rest } = prev.users || {}
-      return { ...prev, users: rest }
+    if (!sessionId) return
+    setRoom((prev) => {
+      if (!prev || !prev.users || !prev.users[sessionId]) return prev
+      const { [sessionId]: _, ...rest } = prev.users
+      return {
+        ...prev,
+        users: rest,
+        userCount: Object.keys(rest).length,
+      }
     })
-  }, [updateRoom])
+  }, [])
+
+  const setRoomState = useCallback((newRoom: Room) => {
+    if (!newRoom) return
+    setRoom((prev) => {
+      if (!prev) return newRoom
+      if (
+        prev.version === newRoom.version &&
+        prev.code === newRoom.code &&
+        prev.language === newRoom.language &&
+        prev.userCount === newRoom.userCount
+      ) {
+        return prev
+      }
+      return newRoom
+    })
+  }, [])
 
   return {
     room,
@@ -99,5 +140,7 @@ export function useRoom({ roomId, initialRoom, onRoomUpdate }: UseRoomOptions) {
     updateCode,
     addUser,
     removeUser,
+    setRoomState,
+    updateRoom,
   }
 }

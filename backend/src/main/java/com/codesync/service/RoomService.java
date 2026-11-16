@@ -110,13 +110,20 @@ public class RoomService {
         if (room == null) {
             return null;
         }
-        // Simple optimistic locking
-        if (version > 0 && version != room.getVersion()) {
-            log.warn("Version conflict for room {}: expected {}, got {}", roomId, room.getVersion(), version);
+        long nextVersion = Math.max(room.getVersion() + 1, version);
+        room.setCode(code);
+        room.setVersion(nextVersion);
+        room.setUpdatedAt(Instant.now());
+        redisTemplate.opsForValue().set(ROOM_PREFIX + roomId, room);
+        return room;
+    }
+
+    public Room updateLanguage(String roomId, String language) {
+        Room room = getRoom(roomId);
+        if (room == null) {
             return null;
         }
-        room.setCode(code);
-        room.setVersion(room.getVersion() + 1);
+        room.setLanguage(language);
         room.setUpdatedAt(Instant.now());
         redisTemplate.opsForValue().set(ROOM_PREFIX + roomId, room);
         return room;

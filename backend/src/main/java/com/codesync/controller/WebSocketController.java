@@ -90,6 +90,19 @@ public class WebSocketController {
         return request;
     }
 
+    @MessageMapping("/room/{roomId}/language")
+    @SendTo("/topic/room/{roomId}/language")
+    public java.util.Map<String, String> handleLanguage(
+            @DestinationVariable String roomId,
+            @Payload java.util.Map<String, String> request) {
+
+        String language = request.get("language");
+        if (language != null) {
+            roomService.updateLanguage(roomId, language);
+        }
+        return request;
+    }
+
     @SubscribeMapping("/room/{roomId}/state")
     public Room getRoomState(@DestinationVariable String roomId) {
         return roomService.getRoom(roomId);

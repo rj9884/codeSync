@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Loader2, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -8,10 +8,9 @@ import { OutputPanel } from '../components/editor/OutputPanel'
 import { Sidebar } from '../components/sidebar/Sidebar'
 import { useStompClient } from '../hooks/useStompClient'
 import { useTyping } from '../hooks/useTyping'
-import { usePresence } from '../hooks/usePresence'
 import { useRoom } from '../hooks/useRoom'
 import { executionApi } from '../services/api'
-import type { ExecutionResponse, CodeUpdate } from '../types'
+import type { ExecutionResponse, CodeUpdate, Room, RoomUser, TypingEvent } from '../types'
 import { cn } from '../utils/cn'
 
 export function EditorPage() {
@@ -45,7 +44,7 @@ export function EditorPage() {
     return defaultUser
   })
 
-  // Synchronize localStorage when roomId or user changes
+  // Synchronize localStorage when roomId changes
   useEffect(() => {
     if (currentUser.roomId !== effectiveRoomId) {
       const updated = { ...currentUser, roomId: effectiveRoomId }
@@ -53,56 +52,79 @@ export function EditorPage() {
       localStorage.setItem('codesync_user', JSON.stringify(updated))
       localStorage.setItem('currentUser', JSON.stringify(updated))
     }
-  }, [effectiveRoomId, currentUser])
+  }, [effectiveRoomId])
+
+  const handleRoomUpdate = useCallback((updatedRoom: Room) => {
+    if (updatedRoom.language) {
+      setLanguage((prev) => (prev !== updatedRoom.language ? updatedRoom.language : prev))
+    }
+  }, [])
 
   // Room hook
-  const { room, loading: roomLoading, updateCode, addUser, removeUser } = useRoom({
+  const { room, loading: roomLoading, updateCode, addUser, removeUser, setRoomState } = useRoom({
     roomId: effectiveRoomId,
-    onRoomUpdate: (updatedRoom) => {
-      if (updatedRoom.language) setLanguage(updatedRoom.language)
-    },
+    onRoomUpdate: handleRoomUpdate,
   })
 
+  const handleCodeUpdate = useCallback((update: CodeUpdate) => {
+    if (update.version > (room?.version || 0)) {
+      updateCode(update.code, update.version)
+    }
+  }, [room?.version, updateCode])
+
+  const handleUserJoined = useCallback((user: RoomUser) => {
+    addUser(user)
+  }, [addUser])
+
+  const handleUserLeft = useCallback((event: { sessionId: string }) => {
+    removeUser(event.sessionId)
+  }, [removeUser])
+
+  const handleRoomState = useCallback((roomState: Room) => {
+    if (roomState) {
+      setRoomState(roomState)
+      if (roomState.language) {
+        setLanguage((prev) => (prev !== roomState.language ? roomState.language : prev))
+      }
+    }
+  }, [setRoomState])
+
+  const typingHandlerRef = useRef<(event: TypingEvent) => void>(() => {})
+
   // STOMP client
-  const { sendCodeUpdate, sendTyping } = useStompClient({
+  const { sendCodeUpdate, sendTyping, sendLanguage } = useStompClient({
     roomId: effectiveRoomId,
     userName: currentUser.name,
-    onCodeUpdate: (update: CodeUpdate) => {
-      if (update.version > (room?.version || 0)) {
-        updateCode(update.code, update.version)
-      }
-    },
-    onTyping: (event) => {
-      handleTypingEvent(event)
-    },
-    onUserJoined: (user) => {
-      addUser(user)
-    },
-    onUserLeft: (event) => {
-      removeUser(event.sessionId)
-    },
-    onRoomState: (roomState) => {
-      if (roomState) {
-        updateCode(roomState.code, roomState.version)
-        if (roomState.language) setLanguage(roomState.language)
-        if (roomState.users) {
-          Object.values(roomState.users).forEach(addUser)
-        }
-      }
-    },
+    onCodeUpdate: handleCodeUpdate,
+    onTyping: (event) => typingHandlerRef.current(event),
+    onUserJoined: handleUserJoined,
+    onUserLeft: handleUserLeft,
+    onRoomState: handleRoomState,
+    onLanguageChange: (newLang) => setLanguage(newLang),
     onConnect: () => toast.success('Connected to room'),
     onDisconnect: () => toast.error('Disconnected from room'),
     onError: (error) => toast.error(error),
   })
 
+  const handleLanguageChange = useCallback((newLang: string) => {
+    setLanguage(newLang)
+    sendLanguage(newLang)
+  }, [sendLanguage])
+
   // Typing hook
   const { typingUsers, setTyping, handleTypingEvent } = useTyping(sendTyping, currentUser.name)
+  useEffect(() => {
+    typingHandlerRef.current = handleTypingEvent
+  }, [handleTypingEvent])
 
-  // Presence hook
-  const { users } = usePresence(
-    room && room.users ? Object.values(room.users) : [],
-    undefined
-  )
+  // Derive stable presence users list without cyclic infinite re-renders
+  const users = useMemo(() => {
+    const list = room?.users ? Object.values(room.users) : []
+    if (list.length === 0 || !list.some((u) => u.name === currentUser.name)) {
+      return [{ sessionId: 'local-user', name: currentUser.name || 'Anonymous', avatarId: 1, owner: true }, ...list]
+    }
+    return list
+  }, [room?.users, currentUser.name])
 
   // Handle code execution
   const handleRunCode = useCallback(async () => {
@@ -183,16 +205,16 @@ export function EditorPage() {
   }, [navigate])
 
   // Show loading state
-  if (roomLoading) {
+  if (roomLoading && !room) {
     return (
-      <div className="flex h-screen items-center justify-center bg-black text-white">
+      <div className="flex h-screen items-center justify-center bg-zinc-950 text-white">
         <Loader2 className="h-8 w-8 animate-spin text-white" />
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen bg-black text-white overflow-hidden">
+    <div className="flex h-screen bg-zinc-950 text-white overflow-hidden">
       {/* Sidebar */}
       <Sidebar
         users={users}
@@ -209,7 +231,7 @@ export function EditorPage() {
         {/* Toolbar */}
         <EditorToolbar
           language={language}
-          onLanguageChange={setLanguage}
+          onLanguageChange={handleLanguageChange}
           roomId={effectiveRoomId}
           onCopyRoomId={handleCopyRoomId}
           onLeaveRoom={handleLeaveRoom}
@@ -220,10 +242,7 @@ export function EditorPage() {
         {/* Editor + Output Panel */}
         <div className="flex-1 flex overflow-hidden">
           {/* Editor Container */}
-          <div className={cn(
-            'flex flex-col flex-1 min-w-0 bg-[#2d2d2d]',
-            showOutput ? 'w-full' : 'w-full'
-          )}>
+          <div className="flex flex-col flex-1 min-w-0 h-full bg-[#18181b] relative">
             <CodeEditor
               roomId={effectiveRoomId}
               language={language}

@@ -32,7 +32,7 @@ export function Sidebar({
   onLeaveRoom,
 }: SidebarProps) {
   const tooltipItems = users.map((u, i) => ({
-    id: u.avatarId || (i + 1),
+    id: i + 1,
     name: u.name || 'Anonymous',
     image: profileImages[((u.avatarId || (i + 1)) - 1) % profileImages.length],
   }))

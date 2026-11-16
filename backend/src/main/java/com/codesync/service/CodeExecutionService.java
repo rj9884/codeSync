@@ -1,5 +1,7 @@
 package com.codesync.service;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.codesync.dto.ExecutionRequest;
 import com.codesync.dto.ExecutionResponse;
 import com.codesync.util.LanguageMapper;
@@ -40,6 +42,15 @@ public class CodeExecutionService {
         long startTime = System.currentTimeMillis();
         int languageId = languageMapper.getLanguageId(request.getLanguage());
 
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            return ExecutionResponse.builder()
+                    .output("")
+                    .error("RapidAPI Key for Judge0 is not configured. Please set JUDGE0_API_KEY environment variable.")
+                    .status("Configuration Error")
+                    .executionTimeMs(0)
+                    .build();
+        }
+
         try {
             String encodedCode = Base64.getEncoder().encodeToString(request.getCode().getBytes());
 
@@ -52,12 +63,10 @@ public class CodeExecutionService {
                     "compiler_options", ""
             );
 
+            String fullUrl = judge0ApiUrl.replaceAll("/+$", "") + "/submissions?base64_encoded=true&wait=true";
+
             Judge0Response response = webClient.post()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/submissions")
-                            .queryParam("base64_encoded", "true")
-                            .queryParam("wait", "true")
-                            .build())
+                    .uri(fullUrl)
                     .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                     .header("x-rapidapi-key", apiKey)
                     .header("x-rapidapi-host", apiHost)
@@ -127,9 +136,11 @@ public class CodeExecutionService {
     }
 
     // Inner class for Judge0 response
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Judge0Response {
         private String stdout;
         private String stderr;
+        @JsonProperty("compile_output")
         private String compile_output;
         private String message;
         private Status status;
