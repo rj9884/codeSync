@@ -2,6 +2,8 @@ package com.codesync.service;
 
 import com.codesync.model.Room;
 import com.codesync.model.RoomUser;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -10,7 +12,6 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class RoomService {
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
     private static final String ROOM_PREFIX = "room:";
     private static final String ROOM_USERS_PREFIX = "room:users:";
 
@@ -29,7 +31,11 @@ public class RoomService {
     }
 
     public Room getRoom(String roomId) {
-        Room room = (Room) redisTemplate.opsForValue().get(ROOM_PREFIX + roomId);
+        Object value = redisTemplate.opsForValue().get(ROOM_PREFIX + roomId);
+        if (value == null) {
+            return null;
+        }
+        Room room = convertToRoom(value);
         if (room == null) {
             return null;
         }
@@ -37,10 +43,30 @@ public class RoomService {
         Map<Object, Object> users = redisTemplate.opsForHash().entries(ROOM_USERS_PREFIX + roomId);
         if (!users.isEmpty()) {
             Map<String, RoomUser> userMap = new ConcurrentHashMap<>();
-            users.forEach((k, v) -> userMap.put((String) k, (RoomUser) v));
+            users.forEach((k, v) -> userMap.put((String) k, convertToRoomUser(v)));
             room.setUsers(userMap);
         }
         return room;
+    }
+
+    private Room convertToRoom(Object value) {
+        if (value instanceof Room) {
+            return (Room) value;
+        }
+        if (value instanceof Map) {
+            return objectMapper.convertValue(value, Room.class);
+        }
+        return null;
+    }
+
+    private RoomUser convertToRoomUser(Object value) {
+        if (value instanceof RoomUser) {
+            return (RoomUser) value;
+        }
+        if (value instanceof Map) {
+            return objectMapper.convertValue(value, RoomUser.class);
+        }
+        return null;
     }
 
     public boolean roomExists(String roomId) {
@@ -99,7 +125,7 @@ public class RoomService {
     public List<RoomUser> getRoomUsers(String roomId) {
         Map<Object, Object> users = redisTemplate.opsForHash().entries(ROOM_USERS_PREFIX + roomId);
         return users.values().stream()
-                .map(v -> (RoomUser) v)
+                .map(this::convertToRoomUser)
                 .toList();
     }
 
@@ -115,7 +141,8 @@ public class RoomService {
             return Collections.emptyList();
         }
         return redisTemplate.opsForValue().multiGet(keys).stream()
-                .map(o -> (Room) o)
+                .map(this::convertToRoom)
+                .filter(Objects::nonNull)
                 .toList();
     }
 }

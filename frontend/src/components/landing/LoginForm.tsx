@@ -4,6 +4,7 @@ import { ArrowRight, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 import { cn } from '../../utils/cn'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
+import { roomApi } from '../../services/api'
 
 interface LoginFormProps {
   className?: string
@@ -18,10 +19,23 @@ export function LoginForm({ className }: LoginFormProps) {
 
   const createNewRoom = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
-    const id = uuidv4().substring(0, 8)
-    const currentUser = { roomId: id, name: name.trim() || 'Anonymous' }
-    localStorage.setItem('codesync_user', JSON.stringify(currentUser))
-    navigate(`/editor/${id}`)
+    setError('')
+    setIsLoading(true)
+
+    try {
+      const id = uuidv4().substring(0, 8)
+      // Create room on backend
+      await roomApi.create('javascript', '')
+      const currentUser = { roomId: id, name: name.trim() || 'Anonymous' }
+      localStorage.setItem('codesync_user', JSON.stringify(currentUser))
+      navigate(`/editor/${id}`)
+      toast.success('Room created')
+    } catch (err) {
+      setError('Failed to create room')
+      toast.error('Failed to create room')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -37,6 +51,14 @@ export function LoginForm({ className }: LoginFormProps) {
     setIsLoading(true)
 
     try {
+      // Check if room exists (or create if joining new)
+      try {
+        await roomApi.get(roomId.trim())
+      } catch {
+        // Room doesn't exist, create it
+        await roomApi.create('javascript', '')
+      }
+
       // Store current user data
       const currentUser = { roomId: roomId.trim(), name: name.trim() }
       localStorage.setItem('codesync_user', JSON.stringify(currentUser))
@@ -135,7 +157,7 @@ export function LoginForm({ className }: LoginFormProps) {
         className="w-full py-2.5 text-sm font-medium text-foreground bg-secondary rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
         disabled={isLoading}
       >
-        <CheckCircle className="h-4 w-4 text-green-500" />
+        <CheckCircle className="h-4 w-4 text-primary" />
         Create New Room
       </button>
     </div>

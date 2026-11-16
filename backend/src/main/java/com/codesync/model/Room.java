@@ -10,7 +10,6 @@ import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.redis.core.TimeToLive;
 
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -35,7 +34,8 @@ public class Room {
     private Instant updatedAt;
 
     @JsonIgnore
-    private Map<String, RoomUser> users;
+    @Builder.Default
+    private Map<String, RoomUser> users = new ConcurrentHashMap<>();
 
     @TimeToLive
     private Long ttlSeconds;

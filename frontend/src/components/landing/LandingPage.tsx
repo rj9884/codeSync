@@ -2,6 +2,7 @@ import { Braces, Zap, Users, Shield, ArrowRight } from 'lucide-react'
 import { LoginForm } from './LoginForm'
 import { useNavigate } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
+import { roomApi } from '../../services/api'
 
 const features = [
   {
@@ -29,11 +30,17 @@ const features = [
 export function LandingPage() {
   const navigate = useNavigate()
 
-  const createNewRoom = () => {
-    const id = uuidv4().substring(0, 8)
-    const currentUser = { roomId: id, name: 'Anonymous' }
-    localStorage.setItem('codesync_user', JSON.stringify(currentUser))
-    navigate(`/editor/${id}`)
+  const createNewRoom = async () => {
+    try {
+      const id = uuidv4().substring(0, 8)
+      // Create room on backend
+      await roomApi.create('javascript', '')
+      const currentUser = { roomId: id, name: 'Anonymous' }
+      localStorage.setItem('codesync_user', JSON.stringify(currentUser))
+      navigate(`/editor/${id}`)
+    } catch (err) {
+      console.error('Failed to create room:', err)
+    }
   }
 
   const scrollToLogin = () => {
