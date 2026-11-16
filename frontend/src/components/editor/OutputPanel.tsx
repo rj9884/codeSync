@@ -35,8 +35,8 @@ export function OutputPanel({ output, onClear, onCopy }: OutputPanelProps) {
             <span className={cn(
               'px-2 py-0.5 text-xs rounded-full',
               isError && 'bg-destructive/10 text-destructive',
-              isSuccess && 'bg-green-500/10 text-green-500',
-              !isError && !isSuccess && 'bg-yellow-500/10 text-yellow-500'
+              isSuccess && 'bg-primary/10 text-primary',
+              !isError && !isSuccess && 'bg-muted/50 text-muted-foreground'
             )}>
               {output.status}
             </span>

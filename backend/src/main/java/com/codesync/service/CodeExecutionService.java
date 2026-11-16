@@ -52,7 +52,7 @@ public class CodeExecutionService {
                     "compiler_options", ""
             );
 
-            ExecutionResponse response = webClient.post()
+            Judge0Response response = webClient.post()
                     .uri(uriBuilder -> uriBuilder
                             .path("/submissions")
                             .queryParam("base64_encoded", "true")

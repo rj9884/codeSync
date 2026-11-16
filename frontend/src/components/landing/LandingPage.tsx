@@ -1,6 +1,7 @@
 import { Braces, Zap, Users, Shield, ArrowRight } from 'lucide-react'
 import { LoginForm } from './LoginForm'
-import Link from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { v4 as uuidv4 } from 'uuid'
 
 const features = [
   {
@@ -26,11 +27,24 @@ const features = [
 ]
 
 export function LandingPage() {
+  const navigate = useNavigate()
+
+  const createNewRoom = () => {
+    const id = uuidv4().substring(0, 8)
+    const currentUser = { roomId: id, name: 'Anonymous' }
+    localStorage.setItem('codesync_user', JSON.stringify(currentUser))
+    navigate(`/editor/${id}`)
+  }
+
+  const scrollToLogin = () => {
+    document.getElementById('join-room')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <section className="relative overflow-hidden py-20 lg:py-32">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:24px_24px] dark:bg-[linear-gradient(to_right,#374151_1px,transparent_1px),linear-gradient(to_bottom,#374151_1px,transparent_1px)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,theme(colors.border)_1px,transparent_1px),linear-gradient(to_bottom,theme(colors.border)_1px,transparent_1px)] bg-[size:24px_24px]" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
@@ -46,19 +60,19 @@ export function LandingPage() {
               Write, run, and review code together in real-time. Built for teams who code together.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                to="/editor/new"
+              <button
+                onClick={scrollToLogin}
                 className="w-full sm:w-auto px-8 py-3 text-base font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
               >
                 Start Coding
                 <ArrowRight className="h-5 w-5" />
-              </Link>
-              <Link
-                to="/editor/new"
+              </button>
+              <button
+                onClick={createNewRoom}
                 className="w-full sm:w-auto px-8 py-3 text-base font-medium text-foreground bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
               >
                 Create a Room
-              </Link>
+              </button>
             </div>
           </div>
         </div>
@@ -91,7 +105,7 @@ export function LandingPage() {
       </section>
 
       {/* Login/CTA Section */}
-      <section className="py-20">
+      <section id="join-room" className="py-20">
         <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-card border border-border rounded-xl p-8">
             <div className="flex items-center gap-2 justify-center mb-6">

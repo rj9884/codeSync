@@ -16,11 +16,12 @@ export function LoginForm({ className }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const createNewRoom = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const createNewRoom = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
     const id = uuidv4().substring(0, 8)
-    setRoomId(id)
-    toast.success('New Room ID Generated')
+    const currentUser = { roomId: id, name: name.trim() || 'Anonymous' }
+    localStorage.setItem('codesync_user', JSON.stringify(currentUser))
+    navigate(`/editor/${id}`)
   }
 
   const handleSubmit = async (e: FormEvent) => {

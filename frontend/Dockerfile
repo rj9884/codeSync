@@ -5,10 +5,9 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-COPY pnpm-lock.yaml* ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
 # Copy source
 COPY . .

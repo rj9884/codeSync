@@ -109,7 +109,7 @@ public class RoomService {
         log.info("Deleted room: {}", roomId);
     }
 
-    public Collection<Room> getAllRooms() {
+    public List<Room> getAllRooms() {
         Set<String> keys = redisTemplate.keys(ROOM_PREFIX + "*");
         if (keys == null || keys.isEmpty()) {
             return Collections.emptyList();

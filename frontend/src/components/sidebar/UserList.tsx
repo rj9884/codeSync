@@ -8,14 +8,10 @@ interface UserListProps {
 }
 
 const AVATAR_COLORS = [
-  'bg-red-500',
-  'bg-orange-500',
-  'bg-yellow-500',
-  'bg-green-500',
-  'bg-cyan-500',
-  'bg-blue-500',
-  'bg-violet-500',
-  'bg-pink-500',
+  'bg-gray-900 dark:bg-gray-100',
+  'bg-gray-700 dark:bg-gray-300',
+  'bg-gray-600 dark:bg-gray-400',
+  'bg-gray-800 dark:bg-gray-200',
 ]
 
 export function UserList({ users, currentUserId }: UserListProps) {
@@ -64,7 +60,7 @@ export function UserList({ users, currentUserId }: UserListProps) {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{user.name}</p>
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Wifi className="h-3 w-3 text-green-500" /> Online
+                    <Wifi className="h-3 w-3 text-primary" /> Online
                   </p>
                 </div>
               </div>

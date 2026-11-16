@@ -1,15 +1,14 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { EditorView, basicSetup, lineNumbers, highlightActiveLineGutter, keymap } from '@codemirror/basic-setup'
+import { EditorView, basicSetup } from '@codemirror/basic-setup'
 import { javascript } from '@codemirror/lang-javascript'
 import { python } from '@codemirror/lang-python'
 import { java } from '@codemirror/lang-java'
 import { cpp } from '@codemirror/lang-cpp'
 import { html } from '@codemirror/lang-html'
 import { css } from '@codemirror/lang-css'
-import { collab, CollabConfig, sendableUpdates } from '@codemirror/collab'
+import { collab, CollabConfig } from '@codemirror/collab'
 import { Compartment, Extension } from '@codemirror/state'
 import { EditorState } from '@codemirror/state'
-import type { CodeUpdate } from '../../types'
 
 interface CodeEditorProps {
   roomId: string
@@ -30,17 +29,6 @@ const LANGUAGE_EXTENSIONS: Record<string, Extension> = {
   html: html(),
   css: css(),
 }
-
-const AVATAR_COLORS = [
-  '#ef4444', // red
-  '#f97316', // orange
-  '#eab308', // yellow
-  '#22c55e', // green
-  '#06b6d4', // cyan
-  '#3b82f6', // blue
-  '#8b5cf6', // violet
-  '#ec4899', // pink
-]
 
 export function CodeEditor({
   roomId,
@@ -81,8 +69,6 @@ export function CodeEditor({
 
     const extensions = [
       basicSetup,
-      lineNumbers(),
-      highlightActiveLineGutter(),
       languageCompartment.current.of(getLanguageExtension(language)),
       collabCompartment.current.of(collab(collabConfig)),
       EditorView.updateListener.of((update) => {
