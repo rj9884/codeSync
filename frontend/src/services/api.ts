@@ -9,8 +9,8 @@ const api = axios.create({
 })
 
 export const roomApi = {
-  create: (language?: string, initialCode?: string) =>
-    api.post<Room>('/rooms', { language, initialCode }),
+  create: (roomId?: string, language?: string, initialCode?: string) =>
+    api.post<Room>('/rooms', { roomId, language, initialCode }),
 
   get: (roomId: string) =>
     api.get<Room>(`/rooms/${roomId}`),

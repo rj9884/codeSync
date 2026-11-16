@@ -14,15 +14,41 @@ export function useRoom({ roomId, initialRoom, onRoomUpdate }: UseRoomOptions) {
   const [error, setError] = useState<string | null>(null)
 
   const fetchRoom = useCallback(async () => {
+    if (!roomId) return
     try {
       setLoading(true)
-      const response = await roomApi.get(roomId)
-      setRoom(response.data)
-      onRoomUpdate?.(response.data)
+      let roomData: Room
+      try {
+        const response = await roomApi.get(roomId)
+        roomData = response.data
+      } catch (err: any) {
+        if (err?.response?.status === 404) {
+          const createResp = await roomApi.create(roomId, 'javascript', '')
+          roomData = createResp.data
+        } else {
+          throw err
+        }
+      }
+      const finalRoom = { ...roomData, users: roomData.users || {} }
+      setRoom(finalRoom)
+      onRoomUpdate?.(finalRoom)
       setError(null)
     } catch (err) {
-      setError('Failed to load room')
+      // If fetching fails, we can still initialize local room state so the user isn't blocked
       console.error('Failed to fetch room:', err)
+      const fallbackRoom: Room = {
+        id: roomId,
+        code: '',
+        language: 'javascript',
+        version: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ttlSeconds: 86400,
+        userCount: 0,
+        users: {},
+      }
+      setRoom(fallbackRoom)
+      setError(null)
     } finally {
       setLoading(false)
     }
@@ -52,7 +78,7 @@ export function useRoom({ roomId, initialRoom, onRoomUpdate }: UseRoomOptions) {
       if (!prev) return null
       return {
         ...prev,
-        users: { ...prev.users, [user.sessionId]: user },
+        users: { ...(prev.users || {}), [user.sessionId]: user },
       }
     })
   }, [updateRoom])
@@ -60,7 +86,7 @@ export function useRoom({ roomId, initialRoom, onRoomUpdate }: UseRoomOptions) {
   const removeUser = useCallback((sessionId: string) => {
     updateRoom(prev => {
       if (!prev) return null
-      const { [sessionId]: _, ...rest } = prev.users
+      const { [sessionId]: _, ...rest } = prev.users || {}
       return { ...prev, users: rest }
     })
   }, [updateRoom])

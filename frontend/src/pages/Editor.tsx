@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Loader2, AlertCircle, CheckCircle, Copy, X, Terminal } from 'lucide-react'
+import { Loader2, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { CodeEditor } from '../components/editor/CodeEditor'
 import { EditorToolbar } from '../components/editor/EditorToolbar'
@@ -11,52 +11,62 @@ import { useTyping } from '../hooks/useTyping'
 import { usePresence } from '../hooks/usePresence'
 import { useRoom } from '../hooks/useRoom'
 import { executionApi } from '../services/api'
-import { roomApi } from '../services/api'
-import type { Room, RoomUser, ExecutionResponse, TypingUser, CodeUpdate } from '../types'
-import { SUPPORTED_LANGUAGES } from '../types'
+import type { ExecutionResponse, CodeUpdate } from '../types'
+import { cn } from '../utils/cn'
 
 export function EditorPage() {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
+  const effectiveRoomId = roomId || 'default'
+
   const [language, setLanguage] = useState('javascript')
   const [output, setOutput] = useState<ExecutionResponse | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [showOutput, setShowOutput] = useState(false)
-  const editorFocusedRef = useRef(false)
+  const [showOutput, setShowOutput] = useState(true)
 
-  // Get current user from localStorage
-  const [currentUser, setCurrentUser] = useState<{ roomId: string; name: string } | null>(null)
-
-  useEffect(() => {
-    const stored = localStorage.getItem('codesync_user')
+  // Synchronously initialize current user from localStorage
+  const [currentUser, setCurrentUser] = useState<{ roomId: string; name: string }>(() => {
+    const stored = localStorage.getItem('codesync_user') || localStorage.getItem('currentUser')
     if (stored) {
-      setCurrentUser(JSON.parse(stored))
+      try {
+        const parsed = JSON.parse(stored)
+        return {
+          roomId: effectiveRoomId,
+          name: parsed.name || 'Anonymous',
+        }
+      } catch (e) {
+        // ignore
+      }
     }
-  }, [])
+    const defaultUser = { roomId: effectiveRoomId, name: 'Anonymous' }
+    localStorage.setItem('codesync_user', JSON.stringify(defaultUser))
+    localStorage.setItem('currentUser', JSON.stringify(defaultUser))
+    return defaultUser
+  })
 
-  // Redirect if no user or roomId mismatch
+  // Synchronize localStorage when roomId or user changes
   useEffect(() => {
-    if (currentUser && roomId && currentUser.roomId !== roomId) {
-      navigate(`/editor/${currentUser.roomId}`)
+    if (currentUser.roomId !== effectiveRoomId) {
+      const updated = { ...currentUser, roomId: effectiveRoomId }
+      setCurrentUser(updated)
+      localStorage.setItem('codesync_user', JSON.stringify(updated))
+      localStorage.setItem('currentUser', JSON.stringify(updated))
     }
-    if (!currentUser && roomId !== 'new') {
-      navigate('/')
-    }
-  }, [currentUser, roomId, navigate])
+  }, [effectiveRoomId, currentUser])
 
   // Room hook
-  const { room, loading: roomLoading, error: roomError, updateCode, addUser, removeUser } = useRoom({
-    roomId: roomId || '',
+  const { room, loading: roomLoading, updateCode, addUser, removeUser } = useRoom({
+    roomId: effectiveRoomId,
     onRoomUpdate: (updatedRoom) => {
       if (updatedRoom.language) setLanguage(updatedRoom.language)
     },
   })
 
   // STOMP client
-  const { connected, sendCodeUpdate, sendTyping } = useStompClient({
-    roomId: roomId || '',
-    userName: currentUser?.name || '',
+  const { sendCodeUpdate, sendTyping } = useStompClient({
+    roomId: effectiveRoomId,
+    userName: currentUser.name,
     onCodeUpdate: (update: CodeUpdate) => {
       if (update.version > (room?.version || 0)) {
         updateCode(update.code, update.version)
@@ -75,7 +85,9 @@ export function EditorPage() {
       if (roomState) {
         updateCode(roomState.code, roomState.version)
         if (roomState.language) setLanguage(roomState.language)
-        Object.values(roomState.users).forEach(addUser)
+        if (roomState.users) {
+          Object.values(roomState.users).forEach(addUser)
+        }
       }
     },
     onConnect: () => toast.success('Connected to room'),
@@ -84,12 +96,12 @@ export function EditorPage() {
   })
 
   // Typing hook
-  const { typingUsers, setTyping, handleTypingEvent } = useTyping(sendTyping, currentUser?.name || '')
+  const { typingUsers, setTyping, handleTypingEvent } = useTyping(sendTyping, currentUser.name)
 
   // Presence hook
-  const { users, otherUsers, handleUserJoined, handleUserLeft } = usePresence(
-    room ? Object.values(room.users) : [],
-    currentUser ? undefined : undefined
+  const { users } = usePresence(
+    room && room.users ? Object.values(room.users) : [],
+    undefined
   )
 
   // Handle code execution
@@ -108,7 +120,7 @@ export function EditorPage() {
 
       setOutput(response.data)
       if (response.data.status === 'Success') {
-        toast.success('Code executed successfully')
+        toast.success('Code executed successfully!')
       } else {
         toast.error('Execution failed')
       }
@@ -137,10 +149,14 @@ export function EditorPage() {
     updateCode(code, version)
   }, [updateCode])
 
-  // Keyboard shortcut for running code
+  // Keyboard shortcuts for running code: Ctrl+Enter OR Ctrl+Alt+N
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey
+      const isEnter = e.key === 'Enter'
+      const isAltN = e.altKey && e.key.toLowerCase() === 'n'
+
+      if ((isCtrlOrCmd && isEnter) || (e.ctrlKey && isAltN)) {
         e.preventDefault()
         handleRunCode()
       }
@@ -152,91 +168,79 @@ export function EditorPage() {
 
   // Copy room ID
   const handleCopyRoomId = useCallback(async () => {
-    if (roomId) {
-      await navigator.clipboard.writeText(roomId)
-      toast.success('Room ID copied')
+    if (effectiveRoomId) {
+      await navigator.clipboard.writeText(effectiveRoomId)
+      toast.success('Room ID copied to clipboard')
     }
-  }, [roomId])
+  }, [effectiveRoomId])
 
   // Leave room
   const handleLeaveRoom = useCallback(() => {
     localStorage.removeItem('codesync_user')
+    localStorage.removeItem('currentUser')
+    toast('You have left the room')
     navigate('/')
   }, [navigate])
 
   // Show loading state
   if (roomLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
-  // Show error state
-  if (roomError) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Failed to load room</h2>
-          <p className="text-muted-foreground mb-4">{roomError}</p>
-          <button
-            onClick={handleLeaveRoom}
-            className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            Go Home
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if (!room) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex h-screen items-center justify-center bg-black text-white">
+        <Loader2 className="h-8 w-8 animate-spin text-white" />
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen bg-black text-white overflow-hidden">
+      {/* Sidebar */}
+      <Sidebar
+        users={users}
+        typingUsers={typingUsers}
+        currentUserName={currentUser.name}
+        onClose={() => setSidebarOpen(false)}
+        isOpen={sidebarOpen}
+        onCopyRoomId={handleCopyRoomId}
+        onLeaveRoom={handleLeaveRoom}
+      />
+
       {/* Main Editor Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-zinc-950">
         {/* Toolbar */}
         <EditorToolbar
           language={language}
           onLanguageChange={setLanguage}
-          roomId={roomId || ''}
+          roomId={effectiveRoomId}
           onCopyRoomId={handleCopyRoomId}
           onLeaveRoom={handleLeaveRoom}
           onRunCode={handleRunCode}
           isRunning={isRunning}
         />
 
-        {/* Editor + Output */}
+        {/* Editor + Output Panel */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Editor */}
+          {/* Editor Container */}
           <div className={cn(
-            'flex flex-col flex-1 min-w-0',
-            showOutput ? 'lg:w-2/3' : 'lg:w-full'
+            'flex flex-col flex-1 min-w-0 bg-[#2d2d2d]',
+            showOutput ? 'w-full' : 'w-full'
           )}>
             <CodeEditor
-              roomId={roomId || ''}
+              roomId={effectiveRoomId}
               language={language}
-              initialCode={room.code}
-              version={room.version}
+              initialCode={room?.code || ''}
+              version={room?.version || 0}
               onCodeChange={handleCodeChange}
               onRemoteUpdate={handleRemoteUpdate}
             />
           </div>
 
-          {/* Output Panel */}
+          {/* User Terminal / Output Panel */}
           {showOutput && (
             <OutputPanel
               output={output}
+              typingUsers={typingUsers}
               onClear={() => setOutput(null)}
+              onClose={() => setShowOutput(false)}
               onCopy={() => {
                 if (output?.output) {
                   navigator.clipboard.writeText(output.output)
@@ -248,19 +252,9 @@ export function EditorPage() {
         </div>
       </div>
 
-      {/* Sidebar */}
-      <Sidebar
-        users={users}
-        typingUsers={typingUsers}
-        currentUserId={currentUser ? undefined : undefined}
-        currentUserName={currentUser?.name || ''}
-        onClose={() => setSidebarOpen(false)}
-        isOpen={sidebarOpen}
-      />
-
-      {/* Mobile sidebar toggle */}
+      {/* Mobile sidebar toggle button */}
       <button
-        className="lg:hidden fixed bottom-4 right-4 z-50 p-3 bg-primary text-primary-foreground rounded-full shadow-lg"
+        className="lg:hidden fixed bottom-4 right-4 z-50 p-3 bg-white text-black rounded-full shadow-lg cursor-pointer"
         onClick={() => setSidebarOpen(true)}
         aria-label="Open sidebar"
       >
@@ -269,7 +263,3 @@ export function EditorPage() {
     </div>
   )
 }
-
-// Need to import cn
-import { cn } from '../utils/cn'
-import { Users } from 'lucide-react'

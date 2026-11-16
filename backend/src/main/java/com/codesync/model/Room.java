@@ -33,7 +33,6 @@ public class Room {
 
     private Instant updatedAt;
 
-    @JsonIgnore
     @Builder.Default
     private Map<String, RoomUser> users = new ConcurrentHashMap<>();
 
