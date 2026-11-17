@@ -41,9 +41,13 @@ class StompService {
     this.userName = userName
     this.callbacks = callbacks
 
+    const wsUrl =
+      import.meta.env.VITE_WS_URL ||
+      (import.meta.env.VITE_API_BASE_URL ? `${import.meta.env.VITE_API_BASE_URL}/api/ws` : '/ws')
+
     return new Promise((resolve, reject) => {
       this.client = new Client({
-        webSocketFactory: () => new SockJS('/ws'),
+        webSocketFactory: () => new SockJS(wsUrl),
         reconnectDelay: this.reconnectDelay,
         onConnect: () => {
           console.log('STOMP connected')
