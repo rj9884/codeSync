@@ -1,97 +1,129 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Loader2, Users } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { CodeEditor } from '../components/editor/CodeEditor'
-import { EditorToolbar } from '../components/editor/EditorToolbar'
-import { OutputPanel } from '../components/editor/OutputPanel'
-import { Sidebar } from '../components/sidebar/Sidebar'
-import { useStompClient } from '../hooks/useStompClient'
-import { useTyping } from '../hooks/useTyping'
-import { useRoom } from '../hooks/useRoom'
-import { executionApi } from '../services/api'
-import type { ExecutionResponse, CodeUpdate, Room, RoomUser, TypingEvent } from '../types'
-import { cn } from '../utils/cn'
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useParams, useNavigate, Link } from "react-router-dom"
+import toast from "react-hot-toast"
+import { AppSidebar } from "@/components/app-sidebar"
+import { CodeEditor } from "@/components/code-editor"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { Separator } from "@/components/ui/separator"
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useStompClient } from "@/hooks/useStompClient"
+import { useTyping } from "@/hooks/useTyping"
+import { useRoom } from "@/hooks/useRoom"
+import { executionApi } from "@/services/api"
+import type { CodeUpdate, Room, RoomUser, TypingEvent } from "@/types"
 
 export function EditorPage() {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
-  const effectiveRoomId = roomId || 'default'
 
-  const [language, setLanguage] = useState('javascript')
-  const [output, setOutput] = useState<ExecutionResponse | null>(null)
-  const [isRunning, setIsRunning] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [showOutput, setShowOutput] = useState(true)
-
-  // Synchronously initialize current user from localStorage
+  // Initialize current user & room ID
   const [currentUser, setCurrentUser] = useState<{ roomId: string; name: string }>(() => {
-    const stored = localStorage.getItem('codesync_user') || localStorage.getItem('currentUser')
+    const stored = localStorage.getItem("currentUser") || localStorage.getItem("codesync_user")
     if (stored) {
       try {
         const parsed = JSON.parse(stored)
         return {
-          roomId: effectiveRoomId,
-          name: parsed.name || 'Anonymous',
+          roomId: roomId || parsed.roomId || "1",
+          name: parsed.name || "Anonymous",
         }
       } catch (e) {
         // ignore
       }
     }
-    const defaultUser = { roomId: effectiveRoomId, name: 'Anonymous' }
-    localStorage.setItem('codesync_user', JSON.stringify(defaultUser))
-    localStorage.setItem('currentUser', JSON.stringify(defaultUser))
+    const defaultUser = { roomId: roomId || "1", name: "Anonymous" }
+    localStorage.setItem("currentUser", JSON.stringify(defaultUser))
+    localStorage.setItem("codesync_user", JSON.stringify(defaultUser))
     return defaultUser
   })
 
-  // Synchronize localStorage when roomId changes
+  const effectiveRoomId = roomId || currentUser.roomId || "1"
+
   useEffect(() => {
     if (currentUser.roomId !== effectiveRoomId) {
       const updated = { ...currentUser, roomId: effectiveRoomId }
       setCurrentUser(updated)
-      localStorage.setItem('codesync_user', JSON.stringify(updated))
-      localStorage.setItem('currentUser', JSON.stringify(updated))
+      localStorage.setItem("currentUser", JSON.stringify(updated))
+      localStorage.setItem("codesync_user", JSON.stringify(updated))
     }
   }, [effectiveRoomId])
+
+  const [code, setCode] = useState("")
+  const [language, setLanguage] = useState("javascript")
+  const [output, setOutput] = useState<string | null>(null)
+  const [isRunning, setIsRunning] = useState(false)
 
   const handleRoomUpdate = useCallback((updatedRoom: Room) => {
     if (updatedRoom.language) {
       setLanguage((prev) => (prev !== updatedRoom.language ? updatedRoom.language : prev))
     }
+    if (updatedRoom.code !== undefined) {
+      setCode(updatedRoom.code)
+    }
   }, [])
 
-  // Room hook
-  const { room, loading: roomLoading, updateCode, addUser, removeUser, setRoomState } = useRoom({
+  const { room, updateCode, addUser, removeUser, setRoomState } = useRoom({
     roomId: effectiveRoomId,
     onRoomUpdate: handleRoomUpdate,
   })
 
-  const handleCodeUpdate = useCallback((update: CodeUpdate) => {
-    if (update.version > (room?.version || 0)) {
-      updateCode(update.code, update.version)
+  useEffect(() => {
+    if (room?.code !== undefined) {
+      setCode(room.code)
     }
-  }, [room?.version, updateCode])
+    if (room?.language) {
+      setLanguage(room.language)
+    }
+  }, [room?.code, room?.language])
 
-  const handleUserJoined = useCallback((user: RoomUser) => {
-    addUser(user)
-  }, [addUser])
-
-  const handleUserLeft = useCallback((event: { sessionId: string }) => {
-    removeUser(event.sessionId)
-  }, [removeUser])
-
-  const handleRoomState = useCallback((roomState: Room) => {
-    if (roomState) {
-      setRoomState(roomState)
-      if (roomState.language) {
-        setLanguage((prev) => (prev !== roomState.language ? roomState.language : prev))
+  const handleCodeUpdate = useCallback(
+    (update: CodeUpdate) => {
+      if (update.version > (room?.version || 0)) {
+        updateCode(update.code, update.version)
+        setCode(update.code)
       }
-    }
-  }, [setRoomState])
+    },
+    [room?.version, updateCode]
+  )
+
+  const handleUserJoined = useCallback(
+    (user: RoomUser) => {
+      addUser(user)
+    },
+    [addUser]
+  )
+
+  const handleUserLeft = useCallback(
+    (event: { sessionId: string }) => {
+      removeUser(event.sessionId)
+    },
+    [removeUser]
+  )
+
+  const handleRoomState = useCallback(
+    (roomState: Room) => {
+      if (roomState) {
+        setRoomState(roomState)
+        if (roomState.language) {
+          setLanguage((prev) => (prev !== roomState.language ? roomState.language : prev))
+        }
+        if (roomState.code !== undefined) {
+          setCode(roomState.code)
+        }
+      }
+    },
+    [setRoomState]
+  )
 
   const typingHandlerRef = useRef<(event: TypingEvent) => void>(() => {})
 
-  // STOMP client
   const { sendCodeUpdate, sendTyping, sendLanguage } = useStompClient({
     roomId: effectiveRoomId,
     userName: currentUser.name,
@@ -101,184 +133,148 @@ export function EditorPage() {
     onUserLeft: handleUserLeft,
     onRoomState: handleRoomState,
     onLanguageChange: (newLang) => setLanguage(newLang),
-    onConnect: () => toast.success('Connected to room'),
-    onDisconnect: () => toast.error('Disconnected from room'),
+    onConnect: () => toast.success("Connected to room"),
+    onDisconnect: () => toast.error("Disconnected from room"),
     onError: (error) => toast.error(error),
   })
 
-  const handleLanguageChange = useCallback((newLang: string) => {
-    setLanguage(newLang)
-    sendLanguage(newLang)
-  }, [sendLanguage])
+  const handleLanguageChange = useCallback(
+    (newLang: string) => {
+      setLanguage(newLang)
+      sendLanguage(newLang)
+    },
+    [sendLanguage]
+  )
 
-  // Typing hook
   const { typingUsers, setTyping, handleTypingEvent } = useTyping(sendTyping, currentUser.name)
   useEffect(() => {
     typingHandlerRef.current = handleTypingEvent
   }, [handleTypingEvent])
 
-  // Derive stable presence users list without cyclic infinite re-renders
-  const users = useMemo(() => {
+  const teamMembers = useMemo(() => {
     const list = room?.users ? Object.values(room.users) : []
     if (list.length === 0 || !list.some((u) => u.name === currentUser.name)) {
-      return [{ sessionId: 'local-user', name: currentUser.name || 'Anonymous', avatarId: 1, owner: true }, ...list]
+      return [
+        { id: 1, name: currentUser.name || "Anonymous", avatarId: 1 },
+        ...list.map((u, i) => ({ id: i + 2, name: u.name, avatarId: u.avatarId || (i % 4) + 1 })),
+      ]
     }
-    return list
+    return list.map((u, i) => ({
+      id: i + 1,
+      name: u.name,
+      avatarId: u.avatarId || (i % 4) + 1,
+    }))
   }, [room?.users, currentUser.name])
 
-  // Handle code execution
-  const handleRunCode = useCallback(async () => {
-    if (!room || isRunning) return
+  const handleCodeChange = useCallback(
+    (newCode: string) => {
+      setCode(newCode)
+      const nextVersion = (room?.version || 0) + 1
+      updateCode(newCode, nextVersion)
+      sendCodeUpdate(newCode, nextVersion)
+    },
+    [room?.version, updateCode, sendCodeUpdate]
+  )
 
+  const handleRunCode = useCallback(async () => {
+    if (isRunning) return
     setIsRunning(true)
-    setOutput(null)
-    setShowOutput(true)
 
     try {
       const response = await executionApi.execute({
-        code: room.code,
+        code,
         language,
       })
 
-      setOutput(response.data)
-      if (response.data.status === 'Success') {
-        toast.success('Code executed successfully!')
+      if (response.data.status === "Success") {
+        toast.success("Code executed successfully!")
+        setOutput(response.data.output || "Code executed successfully (no output)")
       } else {
-        toast.error('Execution failed')
+        toast.error("Execution failed")
+        setOutput(response.data.error || response.data.output || "Execution failed")
       }
     } catch (error) {
-      setOutput({
-        output: '',
-        error: error instanceof Error ? error.message : 'Execution failed',
-        status: 'Error',
-        executionTimeMs: 0,
-      })
-      toast.error('Failed to execute code')
+      toast.error("Failed to execute code")
+      setOutput(`Error: ${(error as Error).message}`)
     } finally {
       setIsRunning(false)
     }
-  }, [room, language, isRunning])
+  }, [code, language, isRunning])
 
-  // Handle code change from editor
-  const handleCodeChange = useCallback((code: string, version: number) => {
-    updateCode(code, version)
-    sendCodeUpdate(code, version)
-    setTyping(true)
-  }, [updateCode, sendCodeUpdate, setTyping])
-
-  // Handle remote code update
-  const handleRemoteUpdate = useCallback((code: string, version: number) => {
-    updateCode(code, version)
-  }, [updateCode])
-
-  // Keyboard shortcuts for running code: Ctrl+Enter OR Ctrl+Alt+N
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isCtrlOrCmd = e.ctrlKey || e.metaKey
-      const isEnter = e.key === 'Enter'
-      const isAltN = e.altKey && e.key.toLowerCase() === 'n'
-
-      if ((isCtrlOrCmd && isEnter) || (e.ctrlKey && isAltN)) {
-        e.preventDefault()
-        handleRunCode()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleRunCode])
-
-  // Copy room ID
-  const handleCopyRoomId = useCallback(async () => {
-    if (effectiveRoomId) {
-      await navigator.clipboard.writeText(effectiveRoomId)
-      toast.success('Room ID copied to clipboard')
-    }
-  }, [effectiveRoomId])
-
-  // Leave room
   const handleLeaveRoom = useCallback(() => {
-    localStorage.removeItem('codesync_user')
-    localStorage.removeItem('currentUser')
-    toast('You have left the room')
-    navigate('/')
+    localStorage.removeItem("currentUser")
+    localStorage.removeItem("codesync_user")
+    toast.success("You have left the room")
+    navigate("/")
   }, [navigate])
 
-  // Show loading state
-  if (roomLoading && !room) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950 text-white">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
-      </div>
-    )
-  }
-
   return (
-    <div className="flex h-screen bg-zinc-950 text-white overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar
-        users={users}
-        typingUsers={typingUsers}
-        currentUserName={currentUser.name}
-        onClose={() => setSidebarOpen(false)}
-        isOpen={sidebarOpen}
-        onCopyRoomId={handleCopyRoomId}
+    <SidebarProvider>
+      <AppSidebar
+        roomId={effectiveRoomId}
+        members={teamMembers}
         onLeaveRoom={handleLeaveRoom}
       />
-
-      {/* Main Editor Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-zinc-950">
-        {/* Toolbar */}
-        <EditorToolbar
-          language={language}
-          onLanguageChange={handleLanguageChange}
-          roomId={effectiveRoomId}
-          onCopyRoomId={handleCopyRoomId}
-          onLeaveRoom={handleLeaveRoom}
-          onRunCode={handleRunCode}
-          isRunning={isRunning}
-        />
-
-        {/* Editor + Output Panel */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Editor Container */}
-          <div className="flex flex-col flex-1 min-w-0 h-full bg-[#18181b] relative">
-            <CodeEditor
-              roomId={effectiveRoomId}
-              language={language}
-              initialCode={room?.code || ''}
-              version={room?.version || 0}
-              onCodeChange={handleCodeChange}
-              onRemoteUpdate={handleRemoteUpdate}
-            />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:inline-flex">
+                <BreadcrumbLink asChild>
+                  <Link to="/collaborate">Collaborate</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:inline-flex" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Codespace</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4">
+          <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">&lt;CodeSync/&gt; Codespace</h2>
+              <div className="text-l text-gray-800 dark:text-gray-200 mb-2">
+                Press Ctrl+Alt+N to run code
+              </div>
+              <Select value={language} onValueChange={handleLanguageChange}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="javascript">JavaScript</SelectItem>
+                  <SelectItem value="jsx">JSX</SelectItem>
+                  <SelectItem value="typescript">TypeScript</SelectItem>
+                  <SelectItem value="tsx">TSX</SelectItem>
+                  <SelectItem value="css">CSS</SelectItem>
+                  <SelectItem value="html">HTML</SelectItem>
+                  <SelectItem value="cpp">C++</SelectItem>
+                  <SelectItem value="java">Java</SelectItem>
+                  <SelectItem value="python">Python</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="border rounded-md overflow-hidden">
+              <CodeEditor
+                value={code}
+                onChange={handleCodeChange}
+                language={language}
+                roomId={effectiveRoomId}
+                typingUsers={typingUsers}
+                onTyping={setTyping}
+                output={output}
+                onRunCode={handleRunCode}
+                isExecuting={isRunning}
+              />
+            </div>
           </div>
-
-          {/* User Terminal / Output Panel */}
-          {showOutput && (
-            <OutputPanel
-              output={output}
-              typingUsers={typingUsers}
-              onClear={() => setOutput(null)}
-              onClose={() => setShowOutput(false)}
-              onCopy={() => {
-                if (output?.output) {
-                  navigator.clipboard.writeText(output.output)
-                  toast.success('Output copied')
-                }
-              }}
-            />
-          )}
         </div>
-      </div>
-
-      {/* Mobile sidebar toggle button */}
-      <button
-        className="lg:hidden fixed bottom-4 right-4 z-50 p-3 bg-white text-black rounded-full shadow-lg cursor-pointer"
-        onClick={() => setSidebarOpen(true)}
-        aria-label="Open sidebar"
-      >
-        <Users className="h-6 w-6" />
-      </button>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }
+
+export default EditorPage
