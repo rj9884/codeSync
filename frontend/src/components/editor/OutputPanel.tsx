@@ -1,5 +1,5 @@
 import { X, Terminal, Trash2, Copy } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
+import { useRef, useEffect } from 'react'
 import { cn } from '../../utils/cn'
 import type { ExecutionResponse, TypingUser } from '../../types'
 

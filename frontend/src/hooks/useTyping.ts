@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { TypingEvent } from '../types'
 
-interface TypingUser {
+export interface TypingUser {
   name: string
   timestamp: number
 }
@@ -11,7 +11,6 @@ export function useTyping(
   currentUserName: string
 ) {
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([])
-  const typingTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({})
   const localTypingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Clean up stale typing indicators

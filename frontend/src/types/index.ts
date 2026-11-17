@@ -6,7 +6,13 @@ export interface Room {
   createdAt: string
   updatedAt: string
   users: Record<string, RoomUser>
+  userCount?: number
   ttlSeconds?: number
+}
+
+export interface TypingUser {
+  name: string
+  timestamp: number
 }
 
 export interface RoomUser {

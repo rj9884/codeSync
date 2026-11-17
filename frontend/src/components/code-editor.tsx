@@ -32,7 +32,6 @@ export function CodeEditor({
   value = "",
   language = "javascript",
   onChange,
-  roomId,
   typingUsers = [],
   onTyping,
   output: externalOutput,
@@ -175,6 +174,9 @@ export function CodeEditor({
       <div className="w-1/4 p-4 bg-[#2d2d2d] flex flex-col border-l border-zinc-800">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-300 mb-2"> User Terminal </h2>
         <div className="h-60px typing-indicator border-t border-zinc-700/60">
+          {(executing || isExecuting) && (
+            <div className="text-xs text-zinc-400 py-1 font-mono">Running code...</div>
+          )}
           {typingUsers.map((user) => (
             <div key={user.name} className="typing-user">
               <span>

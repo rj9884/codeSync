@@ -1,4 +1,4 @@
-import { User, Users, Wifi, WifiOff } from 'lucide-react'
+import { Users, Wifi } from 'lucide-react'
 import { cn } from '../../utils/cn'
 import type { RoomUser } from '../../types'
 

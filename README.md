@@ -80,6 +80,11 @@ Frontend runs on http://localhost:5173
 docker-compose up -d
 ```
 
+The services will be available at:
+- Frontend: http://localhost:3000 (also mapped to http://localhost:5173 and http://localhost:8080)
+- Backend API: http://localhost:8081
+- Redis: `localhost:6379`
+
 ## Environment Variables
 
 ### Backend (application.yml)
@@ -176,27 +181,64 @@ frontend/
 | HTML | 72 |
 | CSS | 73 |
 
-## Development
+## Development & Testing
 
-### Backend Tests
+### Backend Tests (JUnit 5 + Mockito)
+
+Unit and controller tests are executed via the Maven Wrapper:
 
 ```bash
 cd backend
 ./mvnw test
 ```
 
-### Frontend Tests
+To run a specific test class:
+```bash
+./mvnw test -Dtest=RoomServiceTest
+# or
+./mvnw test -Dtest=RoomControllerTest
+```
 
+Backend test suite covers:
+- **`RoomServiceTest`**: Room lifecycle, Redis caching/storage, user join/leave, code/language synchronization.
+- **`RoomControllerTest`**: REST API endpoints for room creation, lookup, and 404 handling.
+- **`LanguageMapperTest`**: Language ID mapping, case-insensitivity, default fallback, and language support checks.
+
+### Frontend Tests (Vitest + React Testing Library)
+
+Run all frontend tests once (CI mode):
 ```bash
 cd frontend
 npm test
 ```
 
-### Linting
+Run tests in interactive watch mode:
+```bash
+npm run test:watch
+```
 
+Run tests with Vitest visual UI:
+```bash
+npm run test:ui
+```
+
+Frontend test suite covers:
+- **`Editor.test.tsx`**: Route handling and editor rendering without crashing.
+- **`ErrorBoundary.test.tsx`**: Error boundary fallback UI rendering and recovery buttons.
+- **`cn.test.ts`**: Tailwind class name merging, condition resolution, and class precedence.
+
+### Linting & Type Checking
+
+Run ESLint 9 (flat configuration):
 ```bash
 cd frontend
 npm run lint
+```
+
+Run TypeScript static type checks:
+```bash
+cd frontend
+npx tsc --noEmit
 ```
 
 ## Deployment

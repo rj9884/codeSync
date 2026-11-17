@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { ExecutionRequest, ExecutionResponse, Room, Language } from '../types'
+import type { ExecutionRequest, ExecutionResponse, Room } from '../types'
 
 const api = axios.create({
   baseURL: '/api',

@@ -1,5 +1,5 @@
 import { cn } from '../../utils/cn'
-import type { TypingUser } from '../../hooks/useTyping'
+import type { TypingUser } from '../../types'
 
 interface TypingIndicatorProps {
   typingUsers: TypingUser[]

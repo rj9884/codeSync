@@ -1,6 +1,6 @@
 import { Client, Message, StompSubscription } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
-import type { CodeUpdate, TypingEvent, UserJoinedEvent, UserLeftEvent, Room, RoomUser } from '../types'
+import type { CodeUpdate, TypingEvent, UserJoinedEvent, UserLeftEvent, Room } from '../types'
 
 type MessageHandler<T> = (data: T) => void
 
@@ -22,9 +22,11 @@ class StompService {
   private callbacks: StompCallbacks = {}
   private roomId: string | null = null
   private userName: string | null = null
-  private reconnectAttempts = 0
-  private maxReconnectAttempts = 5
   private reconnectDelay = 1000
+
+  getUserName(): string | null {
+    return this.userName
+  }
 
   connect(roomId: string, userName: string, callbacks: StompCallbacks): Promise<void> {
     if (this.client) {
@@ -45,7 +47,6 @@ class StompService {
         reconnectDelay: this.reconnectDelay,
         onConnect: () => {
           console.log('STOMP connected')
-          this.reconnectAttempts = 0
           this.subscribeToRoom(roomId)
           this.joinRoom(roomId, userName)
           this.callbacks.onConnect?.()

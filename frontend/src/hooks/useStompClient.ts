@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { stompService } from '../services/stomp'
-import type { CodeUpdate, TypingEvent, UserJoinedEvent, UserLeftEvent, Room, RoomUser } from '../types'
+import type { CodeUpdate, TypingEvent, UserJoinedEvent, UserLeftEvent, Room } from '../types'
 
 interface UseStompClientOptions {
   roomId: string

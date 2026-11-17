@@ -79,7 +79,7 @@ export function HeroSection() {
             <div className="absolute inset-0 -z-10 size-full [background:radial-gradient(125%_125%_at_50%_100%,transparent_0%,rgba(11,12,16,0.6)_75%)]"></div>
             <div className="mx-auto max-w-7xl px-6">
               <div className="text-center sm:mx-auto lg:mr-auto lg:mt-0">
-                <AnimatedGroup variants={transitionVariants}>
+                <AnimatedGroup variants={transitionVariants as any}>
                   <Link
                     to="/collaborate"
                     className="hover:bg-zinc-900 bg-zinc-900/90 group mx-auto flex w-fit items-center gap-4 rounded-full border border-zinc-700/80 p-1 pl-4 shadow-lg transition-colors duration-300"
@@ -127,7 +127,7 @@ export function HeroSection() {
                       },
                     },
                     ...transitionVariants,
-                  }}
+                  } as any}
                 >
                   <div className="flex justify-center mt-4">
                     <GoogleGeminiEffect autoAnimate={true} />

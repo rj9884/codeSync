@@ -23,8 +23,8 @@ const profileImages = [
 
 export function Sidebar({
   users,
-  typingUsers,
-  currentUserId,
+  typingUsers: _typingUsers,
+  currentUserId: _currentUserId,
   currentUserName,
   onClose,
   isOpen,
