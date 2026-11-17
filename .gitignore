@@ -1,0 +1,17 @@
+# Agent instructions
+AGENT.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment & logs
+.env
+.env.local
+*.log
