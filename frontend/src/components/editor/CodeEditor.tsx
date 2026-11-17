@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { EditorView, basicSetup } from '@codemirror/basic-setup'
+import { EditorView, basicSetup } from 'codemirror'
 import { javascript } from '@codemirror/lang-javascript'
 import { python } from '@codemirror/lang-python'
 import { java } from '@codemirror/lang-java'

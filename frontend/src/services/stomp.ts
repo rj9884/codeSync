@@ -40,9 +40,8 @@ class StompService {
     this.callbacks = callbacks
 
     return new Promise((resolve, reject) => {
-      const socket = new SockJS('/ws')
       this.client = new Client({
-        webSocketFactory: () => socket,
+        webSocketFactory: () => new SockJS('/ws'),
         reconnectDelay: this.reconnectDelay,
         onConnect: () => {
           console.log('STOMP connected')

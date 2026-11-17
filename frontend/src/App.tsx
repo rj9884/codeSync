@@ -3,10 +3,11 @@ import { Toaster } from 'react-hot-toast'
 import { LandingPage } from './components/landing/LandingPage'
 import { CollaboratePage } from './pages/Collaborate'
 import { EditorPage } from './pages/Editor'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 function App() {
   return (
-    <>
+    <ErrorBoundary>
       <Toaster
         position="top-center"
         toastOptions={{
@@ -27,7 +28,7 @@ function App() {
         <Route path="/Editor/:roomId" element={<EditorPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>
+    </ErrorBoundary>
   )
 }
 
