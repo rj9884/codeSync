@@ -47,12 +47,15 @@ export function EditorPage() {
   const effectiveRoomId = roomId || currentUser.roomId || "1"
 
   useEffect(() => {
-    if (currentUser.roomId !== effectiveRoomId) {
-      const updated = { ...currentUser, roomId: effectiveRoomId }
-      setCurrentUser(updated)
-      localStorage.setItem("currentUser", JSON.stringify(updated))
-      localStorage.setItem("codesync_user", JSON.stringify(updated))
-    }
+    setCurrentUser((prev) => {
+      if (prev.roomId !== effectiveRoomId) {
+        const updated = { ...prev, roomId: effectiveRoomId }
+        localStorage.setItem("currentUser", JSON.stringify(updated))
+        localStorage.setItem("codesync_user", JSON.stringify(updated))
+        return updated
+      }
+      return prev
+    })
   }, [effectiveRoomId])
 
   const [code, setCode] = useState("")

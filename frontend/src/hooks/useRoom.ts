@@ -69,6 +69,7 @@ export function useRoom({ roomId, initialRoom, onRoomUpdate }: UseRoomOptions) {
     if (room) {
       onRoomUpdateRef.current?.(room)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.language])
 
   const updateRoom = useCallback((updates: Partial<Room> | ((prev: Room) => Room)) => {
