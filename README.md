@@ -1,3 +1,7 @@
+<img width="2812" height="1512" alt="preview" src="https://github.com/user-attachments/assets/cacd708b-b962-4e3d-bc3f-0d66b9aa7dc7" />
+
+---
+
 # CodeSync
 
 Real-time collaborative code editor built with Spring Boot and React.
@@ -274,6 +278,23 @@ COPY dist/ /usr/share/nginx/html/
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 ```
+## Ui Screenshots
+
+**Home**
+
+<img width="2816" height="1516" alt="home" src="https://github.com/user-attachments/assets/703a6d8a-0832-4661-8ac0-57e60c6c43c3" />
+
+
+**Collaborate**
+
+<img width="2822" height="1512" alt="collaborate" src="https://github.com/user-attachments/assets/9514e3d9-da44-49d6-b65f-4f90fa7ad65f" />
+
+
+**Codespace**
+
+<img width="2826" height="1526" alt="codespace" src="https://github.com/user-attachments/assets/f343c423-8987-48a1-bc0b-ac9b048de2b1" />
+
+---
 
 ## License
 
