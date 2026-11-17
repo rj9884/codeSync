@@ -64,12 +64,12 @@ export function SidebarOptInForm({
   }
 
   return (
-    <Card className="shadow-none">
+    <Card className="shadow-none border border-zinc-800/80 bg-zinc-900/40">
       <form onSubmit={(e) => e.preventDefault()}>
-        <CardContent className="grid gap-2.5 p-4">
+        <CardContent className="grid gap-2.5 p-3">
           <Button
             type="button"
-            className="w-full bg-sidebar-primary text-sidebar-primary-foreground shadow-none cursor-pointer"
+            className="w-full bg-white text-black hover:bg-zinc-200 transition-colors font-medium shadow-none cursor-pointer"
             size="sm"
             onClick={handleCopyRoomId}
           >
@@ -77,7 +77,7 @@ export function SidebarOptInForm({
           </Button>
           <Button
             type="button"
-            className="w-full bg-sidebar-foreground text-sidebar-primary-foreground shadow-none cursor-pointer"
+            className="w-full bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700/80 transition-colors font-medium shadow-none cursor-pointer"
             size="sm"
             onClick={handleLeaveRoom}
           >

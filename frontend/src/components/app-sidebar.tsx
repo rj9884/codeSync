@@ -24,17 +24,17 @@ export function AppSidebar({
   onLeaveRoom?: () => void
 }) {
   return (
-    <Sidebar {...props}>
-      <SidebarHeader>
+    <Sidebar className="border-r border-zinc-800 bg-[#09090b] text-white" {...props}>
+      <SidebarHeader className="border-b border-zinc-800/80 p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <a href="#">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+            <SidebarMenuButton size="lg" asChild className="hover:bg-zinc-800/60">
+              <a href="#" className="flex items-center gap-3">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-white text-black font-bold">
                   <GalleryVerticalEnd className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">&lt;CodeSync/&gt;</span>
+                  <span className="font-semibold text-white tracking-tight">&lt;CodeSync/&gt;</span>
                 </div>
               </a>
             </SidebarMenuButton>
@@ -43,14 +43,12 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <div className="p-4">
-          <h3 className="mb-4 text-sm font-medium">Team Members</h3>
+          <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-400">Team Members</h3>
           <AnimatedTooltipPreview members={members} />
         </div>
       </SidebarContent>
-      <SidebarFooter>
-        <div className="p-1">
-          <SidebarOptInForm roomId={roomId} onLeaveRoom={onLeaveRoom} />
-        </div>
+      <SidebarFooter className="border-t border-zinc-800/80 p-2">
+        <SidebarOptInForm roomId={roomId} onLeaveRoom={onLeaveRoom} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

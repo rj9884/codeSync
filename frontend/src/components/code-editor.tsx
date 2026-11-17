@@ -173,8 +173,8 @@ export function CodeEditor({
         />
       </div>
       <div className="w-1/4 p-4 bg-[#2d2d2d] flex flex-col border-l border-zinc-800">
-        <h2 className="text-lg text-white mb-2"> User Terminal </h2>
-        <div className="h-60px typing-indicator">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-300 mb-2"> User Terminal </h2>
+        <div className="h-60px typing-indicator border-t border-zinc-700/60">
           {typingUsers.map((user) => (
             <div key={user.name} className="typing-user">
               <span>
@@ -190,8 +190,8 @@ export function CodeEditor({
         </div>
         {displayOutput && (
           <div className="output-panel mt-4 flex-1 overflow-auto">
-            <h3 className="text-sm text-white mb-2">Output:</h3>
-            <pre className="whitespace-pre-wrap text-white font-mono text-sm">{displayOutput}</pre>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">Output:</h3>
+            <pre className="whitespace-pre-wrap text-zinc-100 font-mono text-sm bg-zinc-900/90 p-3 rounded-md border border-zinc-800">{displayOutput}</pre>
           </div>
         )}
       </div>

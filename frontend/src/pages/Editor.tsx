@@ -215,36 +215,36 @@ export function EditorPage() {
         members={teamMembers}
         onLeaveRoom={handleLeaveRoom}
       />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
+      <SidebarInset className="bg-[#0b0c10] text-white">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-zinc-800 bg-[#09090b] px-4">
+          <SidebarTrigger className="-ml-1 text-zinc-300 hover:text-white hover:bg-zinc-800" />
+          <Separator orientation="vertical" className="mr-2 h-4 bg-zinc-800" />
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:inline-flex">
                 <BreadcrumbLink asChild>
-                  <Link to="/collaborate">Collaborate</Link>
+                  <Link to="/collaborate" className="text-zinc-400 hover:text-white transition-colors">Collaborate</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:inline-flex" />
+              <BreadcrumbSeparator className="hidden md:inline-flex text-zinc-600" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Codespace</BreadcrumbPage>
+                <BreadcrumbPage className="text-white font-medium">Codespace</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4">
-          <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min p-4">
+          <div className="min-h-[100vh] flex-1 rounded-xl bg-zinc-900/60 border border-zinc-800/80 md:min-h-min p-5">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">&lt;CodeSync/&gt; Codespace</h2>
-              <div className="text-l text-gray-800 dark:text-gray-200 mb-2">
-                Press Ctrl+Alt+N to run code
+              <h2 className="text-xl font-bold text-white tracking-tight">&lt;CodeSync/&gt; Codespace</h2>
+              <div className="text-sm text-zinc-400">
+                Press <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-xs font-mono text-zinc-300">Ctrl+Alt+N</kbd> to run code
               </div>
               <Select value={language} onValueChange={handleLanguageChange}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[180px] bg-zinc-800/90 border-zinc-700 text-white hover:bg-zinc-800 focus:ring-zinc-600">
                   <SelectValue placeholder="Language" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
                   <SelectItem value="javascript">JavaScript</SelectItem>
                   <SelectItem value="jsx">JSX</SelectItem>
                   <SelectItem value="typescript">TypeScript</SelectItem>
@@ -257,7 +257,7 @@ export function EditorPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="border rounded-md overflow-hidden">
+            <div className="border border-zinc-800 rounded-lg overflow-hidden bg-[#18181b]">
               <CodeEditor
                 value={code}
                 onChange={handleCodeChange}
