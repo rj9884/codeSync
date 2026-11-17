@@ -6,6 +6,47 @@
 
 Real-time collaborative code editor built with Spring Boot and React.
 
+[![Frontend](https://img.shields.io/badge/Frontend-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://frontend-nine-ashy-94.vercel.app)
+[![Backend](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://codesync-spir.onrender.com)
+
+---
+
+## Table of Contents
+
+- [Live Demo](#live-demo)
+- [Architecture](#architecture)
+- [Features](#features)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Backend](#backend)
+  - [Frontend](#frontend)
+  - [With Docker Compose](#with-docker-compose)
+- [Environment Variables](#environment-variables)
+  - [Backend (application.yml)](#backend-applicationyml)
+  - [Frontend (.env)](#frontend-env)
+- [Project Structure](#project-structure)
+- [API Endpoints](#api-endpoints)
+  - [Rooms](#rooms)
+  - [Code Execution](#code-execution)
+  - [WebSocket Events](#websocket-events)
+- [Supported Languages](#supported-languages)
+- [Development & Testing](#development--testing)
+  - [Backend Tests (JUnit 5 + Mockito)](#backend-tests-junit-5--mockito)
+  - [Frontend Tests (Vitest + React Testing Library)](#frontend-tests-vitest--react-testing-library)
+  - [Linting & Type Checking](#linting--type-checking)
+- [Deployment](#deployment)
+- [UI Screenshots](#ui-screenshots)
+- [License](#license)
+
+---
+
+## Live Demo
+
+- **Frontend Application**: [https://frontend-nine-ashy-94.vercel.app](https://frontend-nine-ashy-94.vercel.app)
+- **Backend API & WebSocket Service**: [https://codesync-spir.onrender.com](https://codesync-spir.onrender.com)
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -95,11 +136,14 @@ The services will be available at:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `PORT` | Server HTTP port | `8080` |
 | `SPRING_PROFILES_ACTIVE` | Active profile | `dev` |
+| `REDIS_URL` | Redis connection URL (`rediss://...`) | `` |
 | `REDIS_HOST` | Redis host | `localhost` |
 | `REDIS_PORT` | Redis port | `6379` |
 | `REDIS_PASSWORD` | Redis password | `` |
-| `CORS_ALLOWED_ORIGINS` | Allowed CORS origins | `http://localhost:5173,http://localhost:3000` |
+| `REDIS_SSL` | Enable Redis SSL | `false` |
+| `CORS_ALLOWED_ORIGINS` | Allowed CORS origin patterns | `http://localhost:5173,http://localhost:3000,http://localhost:8080,https://*.vercel.app` |
 | `JUDGE0_API_URL` | Judge0 API URL | `https://judge0-ce.p.rapidapi.com` |
 | `JUDGE0_API_KEY` | RapidAPI key | Required |
 | `JUDGE0_API_HOST` | RapidAPI host | `judge0-ce.p.rapidapi.com` |
@@ -108,15 +152,16 @@ The services will be available at:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `VITE_API_URL` | Backend API URL | `/api` |
-| `VITE_WS_URL` | WebSocket URL | `/ws` |
+| `VITE_API_BASE_URL` | Backend base URL for cloud deployments (e.g. Render) | `` |
+| `VITE_API_URL` | Backend API URL override | `/api` |
+| `VITE_WS_URL` | WebSocket URL override | `/ws` |
 
 ## Project Structure
 
 ```
 backend/
 ├── src/main/java/com/codesync/
-│   ├── config/          # WebSocket, Redis configuration
+│   ├── config/          # WebSocket, Redis, CORS configuration
 │   ├── controller/      # REST and WebSocket controllers
 │   ├── service/         # Business logic
 │   ├── model/           # Domain models
@@ -278,17 +323,16 @@ COPY dist/ /usr/share/nginx/html/
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 ```
-## Ui Screenshots
+
+## UI Screenshots
 
 **Home**
 
 <img width="2816" height="1516" alt="home" src="https://github.com/user-attachments/assets/703a6d8a-0832-4661-8ac0-57e60c6c43c3" />
 
-
 **Collaborate**
 
 <img width="2822" height="1512" alt="collaborate" src="https://github.com/user-attachments/assets/9514e3d9-da44-49d6-b65f-4f90fa7ad65f" />
-
 
 **Codespace**
 
